@@ -18,13 +18,15 @@ The instructions below describe artefacts that are present in this repository an
 The layout of the repository is as follows:
 
 ```
-pl/ - artefacts relevant to the Programmable Logic. Of the most importance are:
+pl/ - artefacts relevant to the Programmable Logic - of the most importance are:
+
     pl/ip_repo/src/debounce.v - logic for cancelling the button bounce effect.
     pl/ip_repo/src/ssd.v - logic for driving PmodSSD.
     pl/ip_repo/src/encoder.v - logic for driving PmodENC.
     pl/ip_repo/hdl/stopwatch_controller_v1_0_S00_AXI.v - interfacing with other IPs via AXI4 Lite.
     pl/ip_repo/hdl/stopwatch_controller_v1_0.v - module that maintains instances of ssd, encoder, debounce and stopwatch_controller_v1_0_S00_AXI.
-    The above source files are packaged into a single IP core, i.e. stopwatch_controller.
+
+    The above source files are referenced within the Vivado project as a single IP core - stopwatch_controller. The files that are not part of the IP core are:
 
     pl/src/verilog/stopwatch_system_wrapper.v - Verilog module where system from stopwatch_system.pdf is specified.
     pl/src/constraints/stopwatch.tcl - Tcl file with unmanaged constraints.
@@ -42,15 +44,15 @@ stopwatch_system.3gp - video clip where the running system is presented.
 
 1. In terminal, go to some working folder (`./`), which should be empty at this point.
 1. Execute:
-    ```shell
+    ```
     $ vivado -mode batch -source <path-to-recreate-project.tcl> -tclargs --origin_dir <your-origin_dir>
     ```
    for testing this instructions, I used:
-    ```shell
+    ```
     $ vivado -mode batch -source ../../projects-vcs/stopwatch_controller/recreate-project.tcl -tclargs --origin_dir "../.."
     ```
    If successful, you should see the following message from that execution:
-    ```shell
+    ```
     "INFO: Project created:stopwatch_controller"
     ```
 1. Open the created Vivado project (`./stopwatch_controller/stopwatch_controller.xpr`) in Vivado with **File > Project > Open**
@@ -61,19 +63,19 @@ stopwatch_system.3gp - video clip where the running system is presented.
 1. Launch SDK with **File > Launch SDK**.
 1. Within the SDK/Eclipse go to **File > New > Application Project**, for project name select _stopwatch-controller_, and make the project **Empty Application**.
 1. Back in the terminal change your working directory as follows:
-    ```shell
+    ```
     $ cd ./stopwatch_controller/stopwatch_controller.sdk/stopwatch-controller/src
     ```
-   and create a softlink to `projects-vcs/stopwatch_controller/ps/stopwatch.c` there - for example:
-    ```shell
+   and create a softlink to `projects-vcs/stopwatch_controller/ps/stopwatch.c` there, for example:
+    ```
     $ ln -s ../../../../../../projects-vcs/stopwatch_controller/ps/stopwatch.c
     ```
 1. Switch back to SDK/Eclipse and refresh the **Project Explorer** view.
 1. Build the application with **Project > Build All**.
-1. Once build completes, program your FPGA with `stopwatch_system_wrapper.bit` by means **Xilix > Program FPGA**.
+1. Once build completes, program your FPGA with `stopwatch_system_wrapper.bit` by means of **Xilinx > Program FPGA**.
 
    The blue LED Done should light up.
-1. Run the stopwatch-controller project with **Run > Run > Launch on Hardware (GDB)**
+1. Run the stopwatch-controller project with **Run > Run > Launch on Hardware (GDB)**.
 
 
 You can see the whole system working in the uploaded video `stopwatch_system.3gp`.

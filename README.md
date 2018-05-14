@@ -78,4 +78,4 @@ stopwatch_system.3gp - video clip where the running system is presented.
 1. Run the stopwatch-controller project with **Run > Run > Launch on Hardware (GDB)**.
 
 
-You can see the whole system working in the uploaded video `stopwatch_system.3gp`.
+You can see the whole system working in the uploaded video [`stopwatch_system.3gp`](https://github.com/zdzislaw-s/stopwatch_controller/blob/master/stopwatch_system.3gp).

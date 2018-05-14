@@ -70,7 +70,7 @@ stopwatch_system.3gp - video clip where the running system is presented.
     ```
 1. Switch back to SDK/Eclipse and refresh the **Project Explorer** view.
 1. Build the application with **Project > Build All**.
-1. Once build completes, program your FPGA with stopwatch_system_wrapper.bit by means **Xilix > Program FPGA**.
+1. Once build completes, program your FPGA with `stopwatch_system_wrapper.bit` by means **Xilix > Program FPGA**.
 
    The blue LED Done should light up.
 1. Run the stopwatch-controller project with **Run > Run > Launch on Hardware (GDB)**

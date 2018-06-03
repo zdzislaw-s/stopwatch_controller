@@ -63,7 +63,7 @@ if { $::argc > 0 } {
 }
 
 # Set the directory path for the original project from where this script was exported
-set orig_proj_dir "[file normalize "$origin_dir/"]"
+set orig_proj_dir "[file normalize "$origin_dir/stopwatch_controller"]"
 
 # Create project
 create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xc7z020clg484-1
@@ -91,7 +91,7 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
 
 # Set IP repository paths
 set obj [get_filesets sources_1]
-set_property "ip_repo_paths" "[file normalize "$origin_dir/projects-vcs/stopwatch_controller/pl/ip_repo"]" $obj
+set_property "ip_repo_paths" "[file normalize "$origin_dir/pl/ip_repo"]" $obj
 
 # Rebuild user ip_repo's index before adding any source files
 update_ip_catalog -rebuild
@@ -99,7 +99,7 @@ update_ip_catalog -rebuild
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
 set files [list \
- [file normalize "${origin_dir}/projects-vcs/stopwatch_controller/pl/src/verilog/stopwatch_system_wrapper.v"] \
+ [file normalize "${origin_dir}/pl/src/verilog/stopwatch_system_wrapper.v"] \
 ]
 add_files -norecurse -fileset $obj $files
 
@@ -122,9 +122,9 @@ if {[string equal [get_filesets -quiet constrs_1] ""]} {
 set obj [get_filesets constrs_1]
 
 # Add/Import constrs file and set constrs file properties
-set file "[file normalize "$origin_dir/projects-vcs/stopwatch_controller/pl/src/constraints/stopwatch.tcl"]"
+set file "[file normalize "$origin_dir/pl/src/constraints/stopwatch.tcl"]"
 set file_added [add_files -norecurse -fileset $obj [list $file]]
-set file "$origin_dir/projects-vcs/stopwatch_controller/pl/src/constraints/stopwatch.tcl"
+set file "$origin_dir/pl/src/constraints/stopwatch.tcl"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets constrs_1] [list "*$file"]]
 set_property -name "file_type" -value "TCL" -objects $file_obj
@@ -310,7 +310,7 @@ proc cr_bd_stopwatch_system { parentCell } {
    CONFIG.PCW_FCLK3_PERIPHERAL_DIVISOR1 {1} \
    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000} \
    CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {150.000000} \
-   CONFIG.PCW_FPGA2_PERIPHERAL_FREQMHZ {50.000000} \
+   CONFIG.PCW_FPGA2_PERIPHERAL_FREQMHZ {50} \
    CONFIG.PCW_FPGA_FCLK0_ENABLE {1} \
    CONFIG.PCW_FPGA_FCLK1_ENABLE {0} \
    CONFIG.PCW_FPGA_FCLK2_ENABLE {0} \
@@ -563,7 +563,7 @@ proc cr_bd_stopwatch_system { parentCell } {
    CONFIG.PCW_QSPI_GRP_SS1_ENABLE {0} \
    CONFIG.PCW_QSPI_PERIPHERAL_DIVISOR0 {5} \
    CONFIG.PCW_QSPI_PERIPHERAL_ENABLE {1} \
-   CONFIG.PCW_QSPI_PERIPHERAL_FREQMHZ {200.000000} \
+   CONFIG.PCW_QSPI_PERIPHERAL_FREQMHZ {200} \
    CONFIG.PCW_QSPI_QSPI_IO {MIO 1 .. 6} \
    CONFIG.PCW_SD0_GRP_CD_ENABLE {1} \
    CONFIG.PCW_SD0_GRP_CD_IO {MIO 47} \

@@ -1,4 +1,4 @@
-#ifndef IS_BARE_METAL // TODO: rename to platform/architecture/os/...
+#ifndef IS_BARE_METAL
 #  error "Please define IS_BARE_METAL, either to 0 or 1, in your project settings."
 #endif // IS_BARE_METAL
 
@@ -11,23 +11,6 @@
 
 typedef u32 UInt32;
 
-UInt32 ReadRegBareMetal(UInt32 reg) {
-    return
-        STOPWATCH_CONTROLLER_mReadReg(
-            XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR,
-            OFFSET(reg)
-        );
-}
-
-void WriteRegBareMetal(UInt32 reg, UInt32 val) {
-    STOPWATCH_CONTROLLER_mWriteReg(
-        XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR,
-		OFFSET(reg),
-		val
-
-    );
-}
-
 #else
 
 #include <fcntl.h>
@@ -37,20 +20,11 @@ void WriteRegBareMetal(UInt32 reg, UInt32 val) {
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #define XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR 0x43C00000
 
 typedef __uint32_t UInt32;
-
-static UInt32 *stopwatch_ctlr;
-
-UInt32 ReadRegLinux(UInt32 reg) {
-    return *(stopwatch_ctlr + reg);
-}
-
-void WriteRegLinux(UInt32 reg, UInt32 val) {
-    *(stopwatch_ctlr + reg) = val;
-}
 
 #endif // IS_BARE_METAL == 1
 
@@ -78,36 +52,132 @@ typedef void (*WriteRegFn)(UInt32, UInt32);
 typedef struct StopWatch {
     ReadRegFn   ReadReg;
     WriteRegFn  WriteReg;
+
+#if IS_BARE_METAL == 1
+#else
+    int         fd;
+    size_t      length;
+    UInt32      *baseAddr;
+#endif // IS_BARE_METAL == 1
 }
     StopWatch;
 
-void Initialise(void) {
+static StopWatch stopwatch;
+
+
+#if IS_BARE_METAL == 1
+
+static
+UInt32 ReadRegBareMetal(UInt32 reg) {
+    return
+        STOPWATCH_CONTROLLER_mReadReg(
+            XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR,
+            OFFSET(reg)
+        );
+}
+
+static
+void WriteRegBareMetal(UInt32 reg, UInt32 val) {
+    STOPWATCH_CONTROLLER_mWriteReg(
+        XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR,
+        OFFSET(reg),
+        val
+    );
+}
+
+#else
+
+static
+UInt32 ReadRegLinux(UInt32 reg) {
+    return *(stopwatch.baseAddr + reg);
+}
+
+static
+void WriteRegLinux(UInt32 reg, UInt32 val) {
+    *(stopwatch.baseAddr + reg) = val;
+}
+
+static
+void Shutdown(StopWatch *sw);
+
+static
+void SignalHandler(int sig)
+{
+    switch (sig) {
+    case SIGTERM:
+    case SIGHUP:
+    case SIGQUIT:
+    case SIGINT:
+        Shutdown(&stopwatch);
+        exit(EXIT_SUCCESS);
+    default:
+        break;
+    }
+}
+
+#endif // IS_BARE_METAL == 1
+
+static
+void Initialise(StopWatch *sw) {
+
+#if IS_BARE_METAL == 1
+
+    sw->ReadReg = ReadRegBareMetal;
+    sw->WriteReg = WriteRegBareMetal;
+
+#else
+    signal(SIGTERM, SignalHandler); /* catch kill signal */
+    signal(SIGHUP, SignalHandler); /* catch hang up signal */
+    signal(SIGQUIT, SignalHandler); /* catch quit signal */
+    signal(SIGINT, SignalHandler); /* catch a CTRL-c signal */
+
+    sw->fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (sw->fd == -1) {
+        printf("[ERROR] open() with /dev/mem failed.\n");
+        goto error;
+    }
+
+    sw->length = getpagesize();
+    sw->baseAddr =
+        (UInt32 *)mmap(
+            NULL,
+            sw->length,
+            PROT_READ | PROT_WRITE,
+            MAP_SHARED,
+            sw->fd,
+            XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR
+        );
+    if (sw->baseAddr == MAP_FAILED) {
+        printf("[ERROR] mmap() with XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR failed.\n");
+        goto error;
+    }
+
+    sw->ReadReg = ReadRegLinux;
+    sw->WriteReg = WriteRegLinux;
+
+    return;
+
+error:
+    if (sw->fd != -1)
+        close(sw->fd);
+
+    exit(EXIT_FAILURE);
+
+#endif // IS_BARE_METAL == 1
+}
+
+static
+void Shutdown(StopWatch *sw) {
 
 #if IS_BARE_METAL == 1
     /* Do nothing. */
 #else
-    // TODO: install signal handlers
 
-    int fd = open("/dev/mem", O_RDWR | O_SYNC);
-    if (fd == -1) {
-        printf("[ERROR] open() with /dev/mem failed.\n");
-        exit(errno);
-    }
+    if (sw->baseAddr != MAP_FAILED)
+        munmap(sw->baseAddr, sw->length);
 
-    stopwatch_ctlr =
-        (UInt32 *)
-        mmap(
-            NULL,
-            getpagesize(),
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            XPAR_STOPWATCH_CONTROLLER_0_S00_AXI_BASEADDR
-        );
-    if (stopwatch_ctlr == MAP_FAILED) {
-        printf("[ERROR] mmap() with SW_BASE.\n");
-        exit(errno);
-    }
+    if (sw->fd != -1)
+        close(sw->fd);
 
 #endif // IS_BARE_METAL == 1
 }
@@ -115,17 +185,7 @@ void Initialise(void) {
 int main(void) {
 
     /* Initialization section */
-    StopWatch sw = {
-#if IS_BARE_METAL == 1
-        ReadRegBareMetal,
-        WriteRegBareMetal
-#else
-        ReadRegLinux,
-        WriteRegLinux
-#endif // IS_BARE_METAL == 1
-    };
-
-    Initialise();
+    Initialise(&stopwatch);
 
     UInt32 ssd_val = 0;
     UInt32 led_val = 0;
@@ -134,27 +194,27 @@ int main(void) {
     UInt32 enc_val = 0;
     UInt32 enc_sw_val = 0;
     UInt32 timer_val = 0;
-    UInt32 btn_val_prev = sw.ReadReg(BTN_REG);
-    UInt32 timer_zero = sw.ReadReg(TIMER_REG);
+    UInt32 btn_val_prev = stopwatch.ReadReg(BTN_REG);
+    UInt32 timer_zero = stopwatch.ReadReg(TIMER_REG);
     UInt32 stopped = 0;
 
     while (1) {
         /* Input section */
-        switch_val = sw.ReadReg(SWITCH_REG);
-        btn_val = sw.ReadReg(BTN_REG);
-        enc_val = sw.ReadReg(ENC_REG);
-        enc_sw_val = sw.ReadReg(ENC_SW_REG);
+        switch_val = stopwatch.ReadReg(SWITCH_REG);
+        btn_val = stopwatch.ReadReg(BTN_REG);
+        enc_val = stopwatch.ReadReg(ENC_REG);
+        enc_sw_val = stopwatch.ReadReg(ENC_SW_REG);
         UInt32 btn_val_rise = ~btn_val_prev & btn_val;
 
         if (!stopped)
-            timer_val = sw.ReadReg(TIMER_REG) - timer_zero;
+            timer_val = stopwatch.ReadReg(TIMER_REG) - timer_zero;
 
         /* Computation section */
         if (enc_sw_val) {
             /* encoder display */
             ssd_val = enc_val;
             led_val = enc_val;
-        } 
+        }
         else {
             /* stopwatch functions */
             UInt32 hundredths = (timer_val / 10) % 100;
@@ -180,21 +240,21 @@ int main(void) {
         if (btn_val_rise & BTN_C) {
             if (stopped) {
                 stopped = 0;
-                timer_zero =
-                    sw.ReadReg(TIMER_REG) - timer_val;
-            } 
+                timer_zero = stopwatch.ReadReg(TIMER_REG) - timer_val;
+            }
             else {
-                timer_zero = sw.ReadReg(TIMER_REG);
+                timer_zero = stopwatch.ReadReg(TIMER_REG);
                 stopped = 1;
             }
         }
 
         /* Output section */
-        sw.WriteReg(SSD_REG, ssd_val);
-        sw.WriteReg(LED_REG, led_val);
+        stopwatch.WriteReg(SSD_REG, ssd_val);
+        stopwatch.WriteReg(LED_REG, led_val);
         btn_val_prev = btn_val;
     }
-    // TODO: release allocated resources
 
-    return 1;
+    Shutdown(&stopwatch);
+
+    return 0;
 }

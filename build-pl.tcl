@@ -30,11 +30,11 @@ set hdf_filename $sdk_dir/$top_module_name.hdf
 write_sysdef \
   -force \
   -hwdef $impl1_dir/$top_module_name.hwdef \
-  -bitfile $impl1_dir/$top_module_name.bit \rec
+  -bitfile $impl1_dir/$top_module_name.bit \
   -meminfo $impl1_dir/$top_module_name.mmi \
   $hdf_filename
 
-exec xsct build-and-run-software.tcl \
+exec xsct build-and-run-ps-bare-metal.tcl \
   $proj_name \
   ${top_module_name}_hw_platform_0 \
   $sdk_dir \
